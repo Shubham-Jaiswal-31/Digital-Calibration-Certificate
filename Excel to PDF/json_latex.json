@@ -1,0 +1,21 @@
+{
+    "certificate_no": "N19110969/D1.06/T-272",
+    "device_name": "Raman Analysis of given sample",
+    "end_date": "23.12.2019",
+    "next_date": "",
+    "calibrated_for": "Biomedical Instrumentation Metrology Section  \\\\\nCSIR-National Physical Laboratory.  \\\\\nDr. K.S. Krishnan Marg, New Delhi-110012  \\\\\nCustomer's Ref. No.: CTR Form, Dated: 25.11.19",
+    "description": "Graphene Oxide, Identification no. Gl",
+    "env_conditions": "Temperature: (23 \\textpm 2) \u00b0C  \\\\\nRelative Humidity: (50 \\textpm 10)\\%",
+    "stds_used": "The spectrometer was calibrated for wavelength using standard silicon and diamond samples.",
+    "tracability": "",
+    "procedure": "The sample is irradiated by argon ion laser of 514.5 nm wavelength and the scattered radiation collected in the back-scattering geometry was analyzed using a triple monochromator coupled with charge coupled device (CCD).",
+    "calibrated_by": "(JASVEER SINGH)",
+    "checked_by": "(Dr. NITA DILAWAR SHARMA)",
+    "incharge": "Dr. Sushil Kumar",
+    "issued_by": "(Dr. SANJAY YADAV)",
+    "result_table": "",
+    "result_desc": "The Raman spectrum of the sample shows the normalized intensity with Raman shift. The peaks represent the various vibrational modes of the given sample.",
+    "calibration_date": "23.12.2019",
+    "remarks": "The data file is also being provided separately in electronic form.",
+    "doi_no": "X"
+}
