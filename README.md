@@ -1,4 +1,5 @@
-<h1 align="center" id="title">Calibration Certificate Converter using LaTeX and Python</h1>
+<h1 align="center" id="title">Heheheha Certificate Converter using LaTeX and Python </h1>
+<center><img src="https://github.com/user-attachments/assets/88cc335c-a158-45c0-8d7e-33e91cdf5b8b"></center>
 
 <p id="description" align="center">The primary goal of this project is to create an intuitive user interface (UI) that allows users to fill out a form and upload an Excel sheet, which will then be converted into a PDF. The user should be able to view and download the converted PDF easily.</p>
 
