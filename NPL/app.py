@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, session, render_template, redirect, url_for, flash
+from flask import Flask, request, jsonify, session, render_template, redirect, url_for, flash, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import distinct, create_engine, text
@@ -10,16 +10,22 @@ import registration
 import meteorological
 import pandas as pd
 import checksum
+from dotenv import load_dotenv
+from generate_pdf import Generator
+
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:clearpointdivine@localhost/npl'
+load_dotenv()
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 app.config['UPLOAD_FOLDER'] = 'uploads'
+UPLOAD_FOLDER = 'uploads'
 
 db = SQLAlchemy(app)
+pdf_generator = Generator()
 
 @app.route('/')
 def home():
@@ -63,6 +69,7 @@ def emplogin():
         user_info = registration.check_emp_credentials(email, password)
         if user_info:
             session['username'] = email
+            session['emp_reg_id'] = user_info['emp_reg_id']
             session.permanent = True
             return jsonify({
                 'message': 'Login successful',
@@ -293,16 +300,27 @@ charges_data = {
     'remarks_if_any': ''
 }
 
-@app.route('/ctbr', methods=['GET', 'POST'])
-def ctbr():
+@app.route('/ctbr1', methods=['GET', 'POST'])
+def ctbr1():
     if request.method == 'GET':
         cust_reg_id = session.get('cust_reg_id')
         if cust_reg_id:
             customer = registration.get_cust(int(cust_reg_id))
             classifications = meteorological.get_classification()
-            return render_template('ctbr.html', customer=customer, classifications=classifications)
+            return render_template('ctbr1.html', customer=customer, classifications=classifications)
         else:
-            return render_template('ctbr.html', customer=None)
+            return render_template('ctbr1.html', customer=None)
+
+@app.route('/ctbr2', methods=['GET', 'POST'])
+def ctbr2():
+    if request.method == 'GET':
+        cust_reg_id = session.get('cust_reg_id')
+        if cust_reg_id:
+            customer = registration.get_cust(int(cust_reg_id))
+            classifications = meteorological.get_classification()
+            return render_template('ctbr2.html', customer=customer, classifications=classifications)
+        else:
+            return render_template('ctbr2.html', customer=None)
     elif request.method == 'POST':
         if request.form:
             key = next(iter(request.form))
@@ -343,6 +361,33 @@ def ctbr():
         
         return jsonify({'error': 'Invalid request'}), 400
 
+@app.route('/send_charges', methods=['POST'])
+def send_charges():
+    data = request.get_json()
+    totalCharge = data.get('totalCharge')
+    print(f"Stored totalCharge: {totalCharge}")
+    session['totalCharge'] = totalCharge    
+    return jsonify({"status": "success", "totalCharge": totalCharge})
+
+@app.route('/ctbr3', methods=['GET'])
+def ctbr3():
+    totalCharge = session.get('totalCharge')
+    print(f"Received totalCharge: {totalCharge}")
+    return render_template('ctbr3.html', totalCharge=totalCharge)
+
+@app.route('/ctbr4', methods=['GET', 'POST'])
+def ctbr4():
+    if request.method == 'GET':
+        return render_template('ctbr4.html')
+    elif request.method == 'POST':
+        return jsonify({'error': 'Invalid request'}), 400
+
+@app.route('/ctbr5', methods=['GET', 'POST'])
+def ctbr5():
+    if request.method == 'GET':
+        return render_template('ctbr5.html')
+    elif request.method == 'POST':
+        return jsonify({'error': 'Invalid request'}), 400
 
 @app.route('/verify/<checksum>')
 def verify(checksum):
@@ -359,6 +404,60 @@ def dcc():
 @app.route('/dcc2')
 def dcc2():
     return render_template('dcc2.html')
+
+@app.route('/download-template/<certificate_type>')
+def download_template(certificate_type):
+    template_file = f"{certificate_type}_template.xlsx"
+    template_path = os.path.join('static/excel_templates', template_file)
+    if os.path.exists(template_path):
+        return send_from_directory(directory='static/excel_templates', path=template_file, as_attachment=True)
+    else:
+        return "Template not found", 404
+
+@app.route('/upload-excel', methods=['POST'])
+def upload_excel():
+    if 'excelFile' not in request.files:
+        return jsonify(success=False), 400
+
+    excel_file = request.files['excelFile']
+    graph_img = request.files['graphImg']
+    if excel_file.filename == '':
+        return jsonify(success=False), 400
+    
+    user_id = str(session['emp_reg_id'])
+    if not user_id:
+        return jsonify(success=False, message="User not authenticated"), 403
+
+    user_folder = os.path.join(UPLOAD_FOLDER, user_id)
+    os.makedirs(user_folder, exist_ok=True)
+
+    excel_file.save(os.path.join(user_folder, excel_file.filename))
+    if graph_img.filename:
+        graph_img.save(os.path.join(user_folder , graph_img.filename))
+    data = request.form
+    attach_data = True if data.get('embed') == 'True' else False
+    attach_graph = True if data.get('graph') == 'True' else False
+    doc_type=data.get('certificateType')
+    excel_path = f'./uploads/{user_id}/{excel_file.filename}'
+    graph_path = f'./uploads/{user_id}/{graph_img.filename}' if attach_graph else ''
+    
+    pdf_name, pdf_data =  pdf_generator.execute_pdf_generator( excel_path, doc_type)
+
+    if checksum.pdf_exists(pdf_name):
+        print('true')
+    else:
+        pdf_generator.create_pdf(pdf_data, excel_path, pdf_name, doc_type, graph_path, attach_data, attach_graph)
+        checksum.insert_pdf_record(
+            pdf_directory=f'./static/pdfs/{pdf_name}',
+            current_stage=2,
+            calibrated_by=pdf_data['calibrated_by'] if pdf_data['calibrated_by'] else pdf_data['tested_by'],
+            checked_by=pdf_data['checked_by'],
+            scientist_in_charge=pdf_data['incharge'],
+            issued_by=pdf_data['issued_by'],
+        )
+        
+    
+    return jsonify(success=True)
 
 @app.route('/about')
 def about():

@@ -2,13 +2,11 @@ from sqlalchemy import create_engine, Column, Text, String, Integer, MetaData, T
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from typing import List, Dict
+from dotenv import load_dotenv
+import os
 
-db_name = "npl"
-user = "postgres"
-password = "clearpointdivine"
-host = "localhost"
-port = "5432"
-engine = create_engine(f"postgresql://{user}:{password}@{host}:{port}/{db_name}")
+load_dotenv()
+engine = create_engine(os.getenv('DATABASE_URL'))
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 metadata = MetaData()
@@ -227,7 +225,7 @@ def check_emp_credentials(email: str, password: str):
         )
         result = session.execute(query).fetchone()
         if result:
-            return {'email': result.email, 'designation': result.designation}
+            return {'email': result.email, 'designation': result.designation, 'emp_reg_id': result.emp_reg_id}
         return None
     finally:
         session.close()
